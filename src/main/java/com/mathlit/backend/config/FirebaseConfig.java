@@ -30,7 +30,9 @@ public class FirebaseConfig {
 
             if (firebaseServiceAccountBase64 != null && !firebaseServiceAccountBase64.isEmpty()) {
                 // Production (Railway): env variable se read karo
-                byte[] decoded = Base64.getDecoder().decode(firebaseServiceAccountBase64);
+                // getMimeDecoder handles whitespace/newlines in base64 string
+                String cleaned = firebaseServiceAccountBase64.replaceAll("\\s", "");
+                byte[] decoded = Base64.getMimeDecoder().decode(cleaned);
                 credentialsStream = new ByteArrayInputStream(decoded);
             } else {
                 // Local dev: file se read karo
