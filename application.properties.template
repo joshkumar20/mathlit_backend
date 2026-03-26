@@ -1,0 +1,25 @@
+# ─────────────────────────────────────────────────────────────
+# MathLit Backend — SERVER CONFIG TEMPLATE
+# Server pe copy karo: /etc/mathlit/application.properties
+# Actual values fill karo — GitHub pe kabhi mat daalo!
+# ─────────────────────────────────────────────────────────────
+
+# Database
+spring.datasource.url=jdbc:postgresql://localhost:5432/mathlit_db
+spring.datasource.username=postgres
+spring.datasource.password=ACTUAL_DB_PASSWORD_HERE
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=false
+
+# Server
+server.port=8080
+
+# Firebase (server pe is path pe rakho)
+firebase.service-account-path=/etc/mathlit/serviceAccountKey.json
+
+# Scheduling
+spring.task.scheduling.enabled=true
+
+# Logging
+logging.config=classpath:logback-spring.xml

@@ -40,3 +40,13 @@ serviceAccountKey*.json
 ### Logs ###
 *.log
 logs/
+
+### Claude Code ###
+.claude/
+
+### Dev scripts ###
+generate_doc.py
+
+### Local config (secrets) ###
+application-local.properties
+src/main/resources/application-local.properties
