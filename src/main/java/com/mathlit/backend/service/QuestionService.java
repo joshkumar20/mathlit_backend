@@ -78,8 +78,9 @@ public class QuestionService {
         // NOT EXISTS subquery — no Java-side ID list needed
         List<Question> fresh = fetchUnattempted(section, category, difficulty, firebaseUid, count * 2);
 
-        // If all questions exhausted → reset and fetch from full pool
-        if (fresh.isEmpty()) {
+        // If unattempted questions are fewer than requested count,
+        // fall back to full pool so small question banks always fill the session
+        if (fresh.size() < count) {
             fresh = fetchFromDb(section, category, difficulty, count);
         }
 
