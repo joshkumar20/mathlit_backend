@@ -24,35 +24,14 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
     // user_question_progress, so it stays fast even when a user has attempted
     // thousands of questions. The Java side never loads the ID list at all.
 
-    @Query("""
-            SELECT q FROM Question q
-            WHERE LOWER(q.section) = LOWER(:section)
-              AND LOWER(q.category) = LOWER(:category)
-              AND NOT EXISTS (
-                  SELECT 1 FROM UserQuestionProgress p
-                  WHERE p.questionId = q.id
-                    AND p.firebaseUid = :uid
-                    AND p.isAttempted = true
-              )
-            """)
+    @Query("SELECT q FROM Question q WHERE LOWER(q.section) = LOWER(:section) AND LOWER(q.category) = LOWER(:category) AND NOT EXISTS (SELECT p FROM UserQuestionProgress p WHERE p.questionId = q.id AND p.firebaseUid = :uid AND p.isAttempted = true)")
     List<Question> findUnattempted(
             @Param("section") String section,
             @Param("category") String category,
             @Param("uid") String uid,
             Pageable pageable);
 
-    @Query("""
-            SELECT q FROM Question q
-            WHERE LOWER(q.section) = LOWER(:section)
-              AND LOWER(q.category) = LOWER(:category)
-              AND LOWER(q.difficulty) = LOWER(:difficulty)
-              AND NOT EXISTS (
-                  SELECT 1 FROM UserQuestionProgress p
-                  WHERE p.questionId = q.id
-                    AND p.firebaseUid = :uid
-                    AND p.isAttempted = true
-              )
-            """)
+    @Query("SELECT q FROM Question q WHERE LOWER(q.section) = LOWER(:section) AND LOWER(q.category) = LOWER(:category) AND LOWER(q.difficulty) = LOWER(:difficulty) AND NOT EXISTS (SELECT p FROM UserQuestionProgress p WHERE p.questionId = q.id AND p.firebaseUid = :uid AND p.isAttempted = true)")
     List<Question> findUnattemptedByDifficulty(
             @Param("section") String section,
             @Param("category") String category,

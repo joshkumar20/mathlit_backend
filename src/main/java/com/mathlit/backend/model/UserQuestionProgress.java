@@ -38,9 +38,13 @@ public class UserQuestionProgress {
     @Column(name = "is_attempted", nullable = false)
     private boolean isAttempted = false;
 
+    // Legacy column — kept mapped so INSERTs don't fail (NOT NULL in DB, no DROP in update mode)
+    @Column(name = "is_marked_reattempt", nullable = false)
+    private boolean isMarkedReattempt = false;
+
     // User saved this question to their favorites
     // Favorites mode only shows questions where this is true
-    @Column(name = "is_favorited", nullable = false)
+    @Column(name = "is_favorited", nullable = false, columnDefinition = "boolean default false")
     private boolean isFavorited = false;
 
     @Column(name = "last_attempted_at")
