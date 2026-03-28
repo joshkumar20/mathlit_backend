@@ -20,4 +20,5 @@ public class QuestionDto {
     private Integer correctIndex; // 0=A, 1=B, 2=C, 3=D
     private String solution;
     private String imageUrl;      // null if no image
+    private boolean isFavorited;  // whether this user has favorited this question
 }

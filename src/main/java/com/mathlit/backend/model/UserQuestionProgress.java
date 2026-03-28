@@ -34,14 +34,14 @@ public class UserQuestionProgress {
     private Long questionId;
 
     // false = not attempted yet (appears in next game)
-    // true  = already attempted (skipped in next game unless marked for reattempt)
+    // true  = already attempted (skipped until all questions done, then resets)
     @Column(name = "is_attempted", nullable = false)
     private boolean isAttempted = false;
 
-    // When user marks for reattempt → is_attempted set back to false
-    // so question reappears in next game
-    @Column(name = "is_marked_reattempt", nullable = false)
-    private boolean isMarkedReattempt = false;
+    // User saved this question to their favorites
+    // Favorites mode only shows questions where this is true
+    @Column(name = "is_favorited", nullable = false)
+    private boolean isFavorited = false;
 
     @Column(name = "last_attempted_at")
     private LocalDateTime lastAttemptedAt;

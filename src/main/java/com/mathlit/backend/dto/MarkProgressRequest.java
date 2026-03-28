@@ -11,10 +11,14 @@ import java.util.List;
 @NoArgsConstructor
 public class MarkProgressRequest {
 
-    // Question IDs that were attempted in this game session
+    // All question IDs shown in this game session
+    // Used to know which questions' favorite state to update
+    private List<Long> sessionQuestionIds;
+
+    // Question IDs that were answered in this session
     private List<Long> attemptedQuestionIds;
 
-    // Question IDs that user marked for reattempt
-    // These will have is_attempted reset to false so they reappear next game
-    private List<Long> reattemptQuestionIds;
+    // Subset of sessionQuestionIds that user has favorited (current state)
+    // For session questions NOT in this list → is_favorited set to false
+    private List<Long> favoriteQuestionIds;
 }

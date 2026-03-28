@@ -16,7 +16,13 @@ public interface UserQuestionProgressRepository extends JpaRepository<UserQuesti
     @Query("SELECT p.questionId FROM UserQuestionProgress p WHERE p.firebaseUid = :uid AND p.isAttempted = true")
     List<Long> findAttemptedQuestionIds(@Param("uid") String uid);
 
-    // All reattempt question IDs for a user (to include even if attempted)
-    @Query("SELECT p.questionId FROM UserQuestionProgress p WHERE p.firebaseUid = :uid AND p.isMarkedReattempt = true")
-    List<Long> findReattemptQuestionIds(@Param("uid") String uid);
+    // All favorited question IDs for a user (used by FAVORITES game mode)
+    @Query("SELECT p.questionId FROM UserQuestionProgress p WHERE p.firebaseUid = :uid AND p.isFavorited = true")
+    List<Long> findFavoriteQuestionIds(@Param("uid") String uid);
+
+    // Fetch progress rows for a specific set of questions (used during progress sync)
+    @Query("SELECT p FROM UserQuestionProgress p WHERE p.firebaseUid = :uid AND p.questionId IN :questionIds")
+    List<UserQuestionProgress> findByFirebaseUidAndQuestionIdIn(
+            @Param("uid") String uid,
+            @Param("questionIds") List<Long> questionIds);
 }

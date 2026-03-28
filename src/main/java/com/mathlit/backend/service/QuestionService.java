@@ -14,10 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,56 +32,62 @@ public class QuestionService {
         String category   = request.getCategory().toUpperCase();
         String difficulty = request.getDifficulty() == null ? "ALL" : request.getDifficulty().toUpperCase();
         int count         = request.getCount();
+        String gameMode   = request.getGameMode() == null ? "PRACTICE" : request.getGameMode().toUpperCase();
 
-        // Total questions available in DB for this category
+        // ── FAVORITES mode: only return questions the user has favorited ──────
+        if ("FAVORITES".equals(gameMode)) {
+            List<Long> favoriteIds = progressRepository.findFavoriteQuestionIds(firebaseUid);
+            if (favoriteIds.isEmpty()) {
+                return new QuestionFetchResponse(section, category, 0, 0, Collections.emptyList());
+            }
+
+            List<Question> favorites = questionRepository.findByIdIn(favoriteIds).stream()
+                    .filter(q -> q.getSection().equalsIgnoreCase(section)
+                              && q.getCategory().equalsIgnoreCase(category))
+                    .collect(Collectors.toList());
+
+            if ("ALL".equals(difficulty)) {
+                // no filter
+            } else {
+                favorites = favorites.stream()
+                        .filter(q -> q.getDifficulty().equalsIgnoreCase(difficulty))
+                        .collect(Collectors.toList());
+            }
+
+            Collections.shuffle(favorites);
+            if (favorites.size() > count) favorites = favorites.subList(0, count);
+
+            Set<Long> favIdSet = new HashSet<>(favoriteIds);
+            List<QuestionDto> dtos = favorites.stream()
+                    .map(q -> toDto(q, favIdSet))
+                    .collect(Collectors.toList());
+
+            return new QuestionFetchResponse(section, category, dtos.size(), dtos.size(), dtos);
+        }
+
+        // ── Normal modes: exclude already-attempted, reset when all done ──────
+
         long totalAvailable = "ALL".equals(difficulty)
                 ? questionRepository.countBySectionAndCategory(section, category)
                 : questionRepository.countBySectionAndCategoryAndDifficulty(section, category, difficulty);
 
-        // IDs the user already attempted
         List<Long> attemptedIds = progressRepository.findAttemptedQuestionIds(firebaseUid);
+        List<Long> favoriteIds  = progressRepository.findFavoriteQuestionIds(firebaseUid);
+        Set<Long> favIdSet      = new HashSet<>(favoriteIds);
 
-        // IDs marked for reattempt — these override attempted status (appear again)
-        List<Long> reattemptIds = progressRepository.findReattemptQuestionIds(firebaseUid);
+        List<Question> fresh = fetchFromDb(section, category, difficulty, attemptedIds, count * 2);
 
-        // Final exclude list = attempted - reattempt (reattempt ones should still appear)
-        List<Long> excludeIds = attemptedIds.stream()
-                .filter(id -> !reattemptIds.contains(id))
-                .collect(Collectors.toList());
-
-        // Fetch unattempted questions
-        List<Question> fresh = fetchFromDb(section, category, difficulty, excludeIds, count * 2);
-
-        // Fetch reattempt questions separately and merge at the front
-        List<Question> reattemptQuestions = new ArrayList<>();
-        if (!reattemptIds.isEmpty()) {
-            reattemptQuestions = questionRepository.findByIdIn(reattemptIds);
-            // Filter by section/category in case reattempt spans other categories
-            reattemptQuestions = reattemptQuestions.stream()
-                    .filter(q -> q.getSection().equals(section) && q.getCategory().equals(category))
-                    .collect(Collectors.toList());
+        // If all questions exhausted → reset and fetch from full pool
+        if (fresh.isEmpty()) {
+            fresh = fetchFromDb(section, category, difficulty, Collections.emptyList(), count);
         }
 
-        // Merge: reattempt questions first, then fresh ones, shuffle each group
-        Collections.shuffle(reattemptQuestions);
         Collections.shuffle(fresh);
+        if (fresh.size() > count) fresh = fresh.subList(0, count);
 
-        List<Question> merged = new ArrayList<>();
-        merged.addAll(reattemptQuestions);
-        merged.addAll(fresh);
-
-        // If still not enough (all questions exhausted), reset and refetch all
-        if (merged.isEmpty()) {
-            merged = fetchFromDb(section, category, difficulty, Collections.emptyList(), count);
-            Collections.shuffle(merged);
-        }
-
-        // Limit to requested count
-        if (merged.size() > count) {
-            merged = merged.subList(0, count);
-        }
-
-        List<QuestionDto> dtos = merged.stream().map(this::toDto).collect(Collectors.toList());
+        List<QuestionDto> dtos = fresh.stream()
+                .map(q -> toDto(q, favIdSet))
+                .collect(Collectors.toList());
 
         return new QuestionFetchResponse(section, category, (int) totalAvailable, dtos.size(), dtos);
     }
@@ -107,43 +110,49 @@ public class QuestionService {
 
     @Transactional
     public void markProgress(String firebaseUid, MarkProgressRequest request) {
-        // Mark attempted questions
-        if (request.getAttemptedQuestionIds() != null) {
-            for (Long questionId : request.getAttemptedQuestionIds()) {
-                UserQuestionProgress progress = getOrCreate(firebaseUid, questionId);
-                progress.setAttempted(true);
-                progress.setMarkedReattempt(false); // clear reattempt flag once re-attempted
-                progress.setLastAttemptedAt(LocalDateTime.now());
-                progressRepository.save(progress);
+        List<Long> sessionIds   = orEmpty(request.getSessionQuestionIds());
+        List<Long> attemptedIds = orEmpty(request.getAttemptedQuestionIds());
+        List<Long> favoriteIds  = orEmpty(request.getFavoriteQuestionIds());
+
+        Set<Long> favSet = new HashSet<>(favoriteIds);
+
+        // Bulk-load existing progress rows for this session to avoid N+1
+        Map<Long, UserQuestionProgress> existing = progressRepository
+                .findByFirebaseUidAndQuestionIdIn(firebaseUid, sessionIds)
+                .stream()
+                .collect(Collectors.toMap(UserQuestionProgress::getQuestionId, p -> p));
+
+        List<UserQuestionProgress> toSave = new ArrayList<>();
+
+        for (Long questionId : sessionIds) {
+            UserQuestionProgress p = existing.getOrDefault(questionId, newProgress(firebaseUid, questionId));
+
+            if (attemptedIds.contains(questionId)) {
+                p.setAttempted(true);
+                p.setLastAttemptedAt(LocalDateTime.now());
             }
+
+            p.setFavorited(favSet.contains(questionId));
+            toSave.add(p);
         }
 
-        // Mark reattempt questions — set is_attempted = false so they reappear next game
-        if (request.getReattemptQuestionIds() != null) {
-            for (Long questionId : request.getReattemptQuestionIds()) {
-                UserQuestionProgress progress = getOrCreate(firebaseUid, questionId);
-                progress.setMarkedReattempt(true);
-                progress.setAttempted(false); // reset so it shows up again
-                progressRepository.save(progress);
-            }
-        }
+        progressRepository.saveAll(toSave);
     }
 
-    private UserQuestionProgress getOrCreate(String firebaseUid, Long questionId) {
-        Optional<UserQuestionProgress> existing =
-                progressRepository.findByFirebaseUidAndQuestionId(firebaseUid, questionId);
-        if (existing.isPresent()) {
-            return existing.get();
-        }
-        UserQuestionProgress progress = new UserQuestionProgress();
-        progress.setFirebaseUid(firebaseUid);
-        progress.setQuestionId(questionId);
-        return progress;
+    private UserQuestionProgress newProgress(String uid, Long questionId) {
+        UserQuestionProgress p = new UserQuestionProgress();
+        p.setFirebaseUid(uid);
+        p.setQuestionId(questionId);
+        return p;
+    }
+
+    private List<Long> orEmpty(List<Long> list) {
+        return list != null ? list : Collections.emptyList();
     }
 
     // ── Mapper ────────────────────────────────────────────────────────────────
 
-    private QuestionDto toDto(Question q) {
+    private QuestionDto toDto(Question q, Set<Long> favoriteIds) {
         QuestionDto dto = new QuestionDto();
         dto.setId(q.getId());
         dto.setQuestionNo(q.getQuestionNo());
@@ -156,6 +165,7 @@ public class QuestionService {
         dto.setCorrectIndex(q.getCorrectIndex());
         dto.setSolution(q.getSolution());
         dto.setImageUrl(q.getImageUrl());
+        dto.setFavorited(favoriteIds.contains(q.getId()));
         return dto;
     }
 }
