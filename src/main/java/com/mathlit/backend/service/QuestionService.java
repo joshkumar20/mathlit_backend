@@ -54,6 +54,7 @@ public class QuestionService {
                         .collect(Collectors.toList());
             }
 
+            int totalFavorites = favorites.size();
             Collections.shuffle(favorites);
             if (favorites.size() > count) favorites = favorites.subList(0, count);
 
@@ -62,7 +63,7 @@ public class QuestionService {
                     .map(q -> toDto(q, favIdSet))
                     .collect(Collectors.toList());
 
-            return new QuestionFetchResponse(section, category, dtos.size(), dtos.size(), dtos);
+            return new QuestionFetchResponse(section, category, totalFavorites, dtos.size(), dtos);
         }
 
         // ── Normal modes: exclude already-attempted, reset when all done ──────
@@ -71,15 +72,15 @@ public class QuestionService {
                 ? questionRepository.countBySectionAndCategory(section, category)
                 : questionRepository.countBySectionAndCategoryAndDifficulty(section, category, difficulty);
 
-        List<Long> attemptedIds = progressRepository.findAttemptedQuestionIds(firebaseUid);
-        List<Long> favoriteIds  = progressRepository.findFavoriteQuestionIds(firebaseUid);
-        Set<Long> favIdSet      = new HashSet<>(favoriteIds);
+        List<Long> favoriteIds = progressRepository.findFavoriteQuestionIds(firebaseUid);
+        Set<Long> favIdSet     = new HashSet<>(favoriteIds);
 
-        List<Question> fresh = fetchFromDb(section, category, difficulty, attemptedIds, count * 2);
+        // NOT EXISTS subquery — no Java-side ID list needed
+        List<Question> fresh = fetchUnattempted(section, category, difficulty, firebaseUid, count * 2);
 
         // If all questions exhausted → reset and fetch from full pool
         if (fresh.isEmpty()) {
-            fresh = fetchFromDb(section, category, difficulty, Collections.emptyList(), count);
+            fresh = fetchFromDb(section, category, difficulty, count);
         }
 
         Collections.shuffle(fresh);
@@ -92,18 +93,22 @@ public class QuestionService {
         return new QuestionFetchResponse(section, category, (int) totalAvailable, dtos.size(), dtos);
     }
 
-    private List<Question> fetchFromDb(String section, String category, String difficulty,
-                                        List<Long> excludeIds, int limit) {
+    // Fetch unattempted questions using NOT EXISTS (no Java-side ID list)
+    private List<Question> fetchUnattempted(String section, String category,
+                                             String difficulty, String uid, int limit) {
         PageRequest page = PageRequest.of(0, limit);
-        if (excludeIds.isEmpty()) {
-            return "ALL".equals(difficulty)
-                    ? questionRepository.findBySectionAndCategory(section, category)
-                    : questionRepository.findBySectionAndCategoryAndDifficulty(section, category, difficulty);
-        } else {
-            return "ALL".equals(difficulty)
-                    ? questionRepository.findBySectionAndCategoryExcluding(section, category, excludeIds, page)
-                    : questionRepository.findBySectionAndCategoryAndDifficultyExcluding(section, category, difficulty, excludeIds, page);
-        }
+        return "ALL".equals(difficulty)
+                ? questionRepository.findUnattempted(section, category, uid, page)
+                : questionRepository.findUnattemptedByDifficulty(section, category, difficulty, uid, page);
+    }
+
+    // Full pool fetch (used when all questions exhausted — reset)
+    private List<Question> fetchFromDb(String section, String category,
+                                        String difficulty, int limit) {
+        PageRequest page = PageRequest.of(0, limit);
+        return "ALL".equals(difficulty)
+                ? questionRepository.findBySectionAndCategory(section, category)
+                : questionRepository.findBySectionAndCategoryAndDifficulty(section, category, difficulty);
     }
 
     // ── Mark Progress (called after game ends) ────────────────────────────────

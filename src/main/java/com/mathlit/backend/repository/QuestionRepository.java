@@ -18,21 +18,46 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
     @Query("SELECT q FROM Question q WHERE LOWER(q.section) = LOWER(:section) AND LOWER(q.category) = LOWER(:category) AND LOWER(q.difficulty) = LOWER(:difficulty)")
     List<Question> findBySectionAndCategoryAndDifficulty(@Param("section") String section, @Param("category") String category, @Param("difficulty") String difficulty);
 
-    // ── With exclude list (already-attempted questions) ───────────────────────
+    // ── Exclude already-attempted (NOT EXISTS — avoids large IN lists) ─────────
+    //
+    // NOT EXISTS uses the (firebase_uid, question_id) unique index on
+    // user_question_progress, so it stays fast even when a user has attempted
+    // thousands of questions. The Java side never loads the ID list at all.
 
-    @Query("SELECT q FROM Question q WHERE LOWER(q.section) = LOWER(:section) AND LOWER(q.category) = LOWER(:category) AND q.id NOT IN :excludeIds")
-    List<Question> findBySectionAndCategoryExcluding(
+    @Query("""
+            SELECT q FROM Question q
+            WHERE LOWER(q.section) = LOWER(:section)
+              AND LOWER(q.category) = LOWER(:category)
+              AND NOT EXISTS (
+                  SELECT 1 FROM UserQuestionProgress p
+                  WHERE p.questionId = q.id
+                    AND p.firebaseUid = :uid
+                    AND p.isAttempted = true
+              )
+            """)
+    List<Question> findUnattempted(
             @Param("section") String section,
             @Param("category") String category,
-            @Param("excludeIds") List<Long> excludeIds,
+            @Param("uid") String uid,
             Pageable pageable);
 
-    @Query("SELECT q FROM Question q WHERE LOWER(q.section) = LOWER(:section) AND LOWER(q.category) = LOWER(:category) AND LOWER(q.difficulty) = LOWER(:difficulty) AND q.id NOT IN :excludeIds")
-    List<Question> findBySectionAndCategoryAndDifficultyExcluding(
+    @Query("""
+            SELECT q FROM Question q
+            WHERE LOWER(q.section) = LOWER(:section)
+              AND LOWER(q.category) = LOWER(:category)
+              AND LOWER(q.difficulty) = LOWER(:difficulty)
+              AND NOT EXISTS (
+                  SELECT 1 FROM UserQuestionProgress p
+                  WHERE p.questionId = q.id
+                    AND p.firebaseUid = :uid
+                    AND p.isAttempted = true
+              )
+            """)
+    List<Question> findUnattemptedByDifficulty(
             @Param("section") String section,
             @Param("category") String category,
             @Param("difficulty") String difficulty,
-            @Param("excludeIds") List<Long> excludeIds,
+            @Param("uid") String uid,
             Pageable pageable);
 
     // ── Counts (for totalAvailable in response) ───────────────────────────────
@@ -43,7 +68,7 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
     @Query("SELECT COUNT(q) FROM Question q WHERE LOWER(q.section) = LOWER(:section) AND LOWER(q.category) = LOWER(:category) AND LOWER(q.difficulty) = LOWER(:difficulty)")
     long countBySectionAndCategoryAndDifficulty(@Param("section") String section, @Param("category") String category, @Param("difficulty") String difficulty);
 
-    // ── Fetch by IDs (for reattempt questions) ───────────────────────────────
+    // ── Fetch by IDs (for favorites) ──────────────────────────────────────────
 
     List<Question> findByIdIn(List<Long> ids);
 }
