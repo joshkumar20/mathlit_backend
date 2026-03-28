@@ -2,6 +2,7 @@ package com.mathlit.backend.dto;
 
 import lombok.Data;
 import java.time.LocalDate;
+import java.util.List;
 
 @Data
 public class DailyChallengeDto {
@@ -12,4 +13,5 @@ public class DailyChallengeDto {
     private int rangeMax;
     private boolean completed;
     private Integer userScore;
+    private List<ChallengeQuestionDto> questions;
 }

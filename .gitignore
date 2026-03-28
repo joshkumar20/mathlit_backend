@@ -36,6 +36,7 @@ build/
 serviceAccountKey.json
 serviceAccountKey*.json
 *.json.json
+firebase_b64.txt
 
 ### Logs ###
 *.log

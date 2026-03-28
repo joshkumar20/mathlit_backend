@@ -2,7 +2,6 @@ package com.mathlit.backend.service;
 
 import com.mathlit.backend.dto.GameSessionDto;
 import com.mathlit.backend.dto.GameSessionResponse;
-import com.mathlit.backend.dto.StreakStatusDto;
 import com.mathlit.backend.model.GameSession;
 import com.mathlit.backend.model.User;
 import com.mathlit.backend.repository.GameSessionRepository;
@@ -20,14 +19,11 @@ public class GameSessionService {
 
     private final GameSessionRepository gameSessionRepository;
     private final UserRepository userRepository;
-    private final StreakService streakService;
 
     public GameSessionService(GameSessionRepository gameSessionRepository,
-                               UserRepository userRepository,
-                               StreakService streakService) {
+                               UserRepository userRepository) {
         this.gameSessionRepository = gameSessionRepository;
         this.userRepository = userRepository;
-        this.streakService = streakService;
     }
 
     @Transactional
@@ -62,7 +58,6 @@ public class GameSessionService {
             user.setHighestScore(dto.getScore());
         }
 
-        StreakStatusDto streak = streakService.updateStreak(user);
         userRepository.save(user);
 
         return new GameSessionResponse(
@@ -70,7 +65,7 @@ public class GameSessionService {
                 xpEarned,
                 user.getLevel(),
                 user.getLevel() > oldLevel,
-                streak.getCurrentStreak()
+                user.getCurrentStreak()
         );
     }
 

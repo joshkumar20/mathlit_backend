@@ -18,11 +18,16 @@ public class DailyChallengeScheduler {
         this.dailyChallengeService = dailyChallengeService;
     }
 
-    @Scheduled(cron = "0 0 0 * * *")
+    // Runs at 12:01 AM every day
+    @Scheduled(cron = "0 1 0 * * *")
     public void generateDailyChallenge() {
         LocalDate today = LocalDate.now();
+        if (dailyChallengeService.questionsExistForDate(today)) {
+            log.info("Daily challenge already exists for {}, skipping", today);
+            return;
+        }
         log.info("Generating daily challenge for {}", today);
         dailyChallengeService.generateChallenge(today);
-        log.info("Daily challenge generated successfully for {}", today);
+        log.info("Daily challenge generated for {}", today);
     }
 }
