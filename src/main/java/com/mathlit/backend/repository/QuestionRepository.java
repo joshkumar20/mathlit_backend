@@ -10,22 +10,24 @@ import java.util.List;
 
 public interface QuestionRepository extends JpaRepository<Question, Long> {
 
-    // ── Basic fetch ───────────────────────────────────────────────────────────
+    // ── Basic fetch (case-insensitive) ────────────────────────────────────────
 
-    List<Question> findBySectionAndCategory(String section, String category);
+    @Query("SELECT q FROM Question q WHERE LOWER(q.section) = LOWER(:section) AND LOWER(q.category) = LOWER(:category)")
+    List<Question> findBySectionAndCategory(@Param("section") String section, @Param("category") String category);
 
-    List<Question> findBySectionAndCategoryAndDifficulty(String section, String category, String difficulty);
+    @Query("SELECT q FROM Question q WHERE LOWER(q.section) = LOWER(:section) AND LOWER(q.category) = LOWER(:category) AND LOWER(q.difficulty) = LOWER(:difficulty)")
+    List<Question> findBySectionAndCategoryAndDifficulty(@Param("section") String section, @Param("category") String category, @Param("difficulty") String difficulty);
 
     // ── With exclude list (already-attempted questions) ───────────────────────
 
-    @Query("SELECT q FROM Question q WHERE q.section = :section AND q.category = :category AND q.id NOT IN :excludeIds")
+    @Query("SELECT q FROM Question q WHERE LOWER(q.section) = LOWER(:section) AND LOWER(q.category) = LOWER(:category) AND q.id NOT IN :excludeIds")
     List<Question> findBySectionAndCategoryExcluding(
             @Param("section") String section,
             @Param("category") String category,
             @Param("excludeIds") List<Long> excludeIds,
             Pageable pageable);
 
-    @Query("SELECT q FROM Question q WHERE q.section = :section AND q.category = :category AND q.difficulty = :difficulty AND q.id NOT IN :excludeIds")
+    @Query("SELECT q FROM Question q WHERE LOWER(q.section) = LOWER(:section) AND LOWER(q.category) = LOWER(:category) AND LOWER(q.difficulty) = LOWER(:difficulty) AND q.id NOT IN :excludeIds")
     List<Question> findBySectionAndCategoryAndDifficultyExcluding(
             @Param("section") String section,
             @Param("category") String category,
@@ -35,9 +37,11 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
 
     // ── Counts (for totalAvailable in response) ───────────────────────────────
 
-    long countBySectionAndCategory(String section, String category);
+    @Query("SELECT COUNT(q) FROM Question q WHERE LOWER(q.section) = LOWER(:section) AND LOWER(q.category) = LOWER(:category)")
+    long countBySectionAndCategory(@Param("section") String section, @Param("category") String category);
 
-    long countBySectionAndCategoryAndDifficulty(String section, String category, String difficulty);
+    @Query("SELECT COUNT(q) FROM Question q WHERE LOWER(q.section) = LOWER(:section) AND LOWER(q.category) = LOWER(:category) AND LOWER(q.difficulty) = LOWER(:difficulty)")
+    long countBySectionAndCategoryAndDifficulty(@Param("section") String section, @Param("category") String category, @Param("difficulty") String difficulty);
 
     // ── Fetch by IDs (for reattempt questions) ───────────────────────────────
 

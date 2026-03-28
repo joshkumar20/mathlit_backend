@@ -31,9 +31,9 @@ public class QuestionService {
 
     @Transactional(readOnly = true)
     public QuestionFetchResponse fetchQuestions(String firebaseUid, QuestionFetchRequest request) {
-        String section    = request.getSection();
-        String category   = request.getCategory();
-        String difficulty = request.getDifficulty() == null ? "ALL" : request.getDifficulty();
+        String section    = request.getSection().toUpperCase();
+        String category   = request.getCategory().toUpperCase();
+        String difficulty = request.getDifficulty() == null ? "ALL" : request.getDifficulty().toUpperCase();
         int count         = request.getCount();
 
         // Total questions available in DB for this category
