@@ -57,6 +57,9 @@ public class Question {
     @Column(name = "image_url")
     private String imageUrl; // nullable — remote URL, shown in UI only when present
 
+    @Column(name = "exam_source", length = 150)
+    private String examSource; // e.g. "SSC CGL 2023 Shift 2", nullable
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

@@ -1,5 +1,17 @@
 package com.mathlit.backend.service;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
+import java.util.Random;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.mathlit.backend.dto.ChallengeQuestionDto;
 import com.mathlit.backend.dto.DailyChallengeDto;
 import com.mathlit.backend.dto.DailyChallengeResultDto;
@@ -11,12 +23,6 @@ import com.mathlit.backend.repository.DailyChallengeQuestionRepository;
 import com.mathlit.backend.repository.DailyChallengeRepository;
 import com.mathlit.backend.repository.DailyChallengeResultRepository;
 import com.mathlit.backend.repository.UserRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDate;
-import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class DailyChallengeService {
@@ -186,3 +192,6 @@ public class DailyChallengeService {
         return q.getOperand1() + " " + sym + " " + q.getOperand2();
     }
 }
+
+
+
