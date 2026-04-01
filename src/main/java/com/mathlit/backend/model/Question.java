@@ -1,11 +1,19 @@
 package com.mathlit.backend.model;
 
-import jakarta.persistence.*;
+import java.time.LocalDateTime;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "questions", indexes = {
@@ -59,6 +67,9 @@ public class Question {
 
     @Column(name = "exam_source", length = 150)
     private String examSource; // e.g. "SSC CGL 2023 Shift 2", nullable
+    
+    @Column(name = "tag", length = 150)
+    private String tag; // e.g. "SSC CGL 2023 Shift 2", nullable
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
