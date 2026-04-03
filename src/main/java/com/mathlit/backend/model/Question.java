@@ -62,8 +62,12 @@ public class Question {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String solution;
 
-    @Column(name = "image_url")
-    private String imageUrl; // nullable — remote URL, shown in UI only when present
+    @Column(name = "question_image_url")
+    private String questionImageUrl; // nullable — remote URL, shown in UI only when present
+
+    @Column(name = "solution_image_url")
+    private String solutionImageUrl; // nullable — remote URL, shown in UI only when present
+
 
     @Column(name = "exam_source", length = 150)
     private String examSource; // e.g. "SSC CGL 2023 Shift 2", nullable

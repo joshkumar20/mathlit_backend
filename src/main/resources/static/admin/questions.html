@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MathLit Admin — Questions</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="layout">
+  <div id="sidebar"></div>
+
+  <main class="main">
+    <div class="page-header">
+      <h1>Questions</h1>
+      <p>Add and manage Advanced &amp; Competitive questions</p>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="tab-add">➕ Add Question</button>
+      <button class="tab-btn" data-tab="tab-list">📋 All Questions</button>
+    </div>
+
+    <!-- ── Add Question ── -->
+    <div id="tab-add" class="tab-content active">
+      <div class="card">
+        <div style="display:flex;gap:10px;margin-bottom:20px">
+          <button class="btn btn-primary" id="btnAdvanced" onclick="setType('ADVANCED')">Advanced</button>
+          <button class="btn btn-ghost"   id="btnCompetitive" onclick="setType('COMPETITIVE')">Competitive</button>
+        </div>
+
+        <div id="alert-add" class="alert"></div>
+
+        <form id="addForm">
+          <div class="form-grid cols-3" style="margin-bottom:16px">
+            <!-- Advanced fields -->
+            <div class="form-group" id="grp-section">
+              <label>Section *</label>
+              <select id="section" onchange="onSectionChange()" required>
+                <option value="">— select —</option>
+                <option>ARITHMETIC</option><option>ALGEBRA</option>
+                <option>GEOMETRY</option><option>TRIGONOMETRY</option>
+                <option>STATISTICS</option>
+              </select>
+            </div>
+            <div class="form-group" id="grp-category">
+              <label>Category *</label>
+              <select id="category" required>
+                <option value="">— select section first —</option>
+              </select>
+            </div>
+
+            <!-- Competitive fields -->
+            <div class="form-group" id="grp-comp-root" style="display:none">
+              <label>Exam (Root) *</label>
+              <select id="compRoot" onchange="onCompRootChange()">
+                <option value="">— loading —</option>
+              </select>
+            </div>
+            <div class="form-group" id="grp-comp-sub" style="display:none">
+              <label>Sub-category *</label>
+              <select id="compSub" onchange="onCompSubChange()">
+                <option value="">— select exam first —</option>
+              </select>
+            </div>
+            <div class="form-group" id="grp-comp-leaf" style="display:none">
+              <label>Paper / Set *</label>
+              <select id="compLeaf" onchange="onCompLeafChange()">
+                <option value="">— select sub-cat first —</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Difficulty *</label>
+              <select id="difficulty" required>
+                <option value="">— select —</option>
+                <option>EASY</option><option>MEDIUM</option><option>HARD</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Question No</label>
+              <input id="questionNo" type="number" placeholder="optional" />
+            </div>
+          </div>
+
+          <div class="form-grid cols-1" style="margin-bottom:16px">
+            <div class="form-group">
+              <label>Question Text *</label>
+              <textarea id="questionText" placeholder="Enter the question..." rows="3" required></textarea>
+            </div>
+          </div>
+
+          <div class="form-grid" style="margin-bottom:16px">
+            <div class="form-group">
+              <label>Option A *</label>
+              <input id="optionA" type="text" required />
+            </div>
+            <div class="form-group">
+              <label>Option B *</label>
+              <input id="optionB" type="text" required />
+            </div>
+            <div class="form-group">
+              <label>Option C *</label>
+              <input id="optionC" type="text" required />
+            </div>
+            <div class="form-group">
+              <label>Option D *</label>
+              <input id="optionD" type="text" required />
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:16px">
+            <label>Correct Answer *</label>
+            <div class="radio-group">
+              <label><input type="radio" name="correct" value="0" required /> A</label>
+              <label><input type="radio" name="correct" value="1" /> B</label>
+              <label><input type="radio" name="correct" value="2" /> C</label>
+              <label><input type="radio" name="correct" value="3" /> D</label>
+            </div>
+          </div>
+
+          <div class="form-grid cols-1" style="margin-bottom:16px">
+            <div class="form-group">
+              <label>Solution / Explanation *</label>
+              <textarea id="solution" placeholder="Step-by-step solution..." rows="3" required></textarea>
+            </div>
+          </div>
+
+          <div class="form-grid" style="margin-bottom:20px">
+            <div class="form-group">
+              <label>Question Image URL</label>
+              <input id="questionImageUrl" type="url" placeholder="https://drive.google.com/..." />
+            </div>
+            <div class="form-group">
+              <label>Solution Image URL</label>
+              <input id="solutionImageUrl" type="url" placeholder="https://drive.google.com/..." />
+            </div>
+            <div class="form-group" id="grp-examSource">
+              <label>Exam Source</label>
+              <input id="examSource" type="text" placeholder="e.g. SSC CGL 2023 Shift 2" />
+            </div>
+            <div class="form-group" id="grp-tag">
+              <label>Tag</label>
+              <input id="tag" type="text" placeholder="e.g. PYQ, MOCKS" />
+            </div>
+          </div>
+
+          <!-- Hidden competitive fields (auto-filled) -->
+          <input type="hidden" id="compSection" />
+          <input type="hidden" id="compCategory" />
+          <input type="hidden" id="compTag" />
+          <input type="hidden" id="compExamSource" />
+
+          <button type="submit" class="btn btn-primary">Save Question</button>
+          <button type="button" class="btn btn-ghost" onclick="resetForm()" style="margin-left:8px">Clear</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ── Question List ── -->
+    <div id="tab-list" class="tab-content">
+      <div class="card">
+        <div class="filter-bar">
+          <div class="form-group">
+            <label>Section</label>
+            <select id="f-section" onchange="loadQuestions()">
+              <option value="">All</option>
+              <option>ARITHMETIC</option><option>ALGEBRA</option>
+              <option>GEOMETRY</option><option>TRIGONOMETRY</option>
+              <option>STATISTICS</option><option>COMPETITIVE</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Difficulty</label>
+            <select id="f-difficulty" onchange="loadQuestions()">
+              <option value="">All</option>
+              <option>EASY</option><option>MEDIUM</option><option>HARD</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex:1;min-width:200px">
+            <label>Search</label>
+            <input id="f-search" type="text" placeholder="Search question text..." oninput="debounceSearch()" />
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="loadQuestions()">🔍 Filter</button>
+        </div>
+
+        <div id="alert-list" class="alert"></div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th><th>Section</th><th>Category</th><th>Diff</th>
+                <th style="min-width:200px">Question</th><th>Tag</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="questionTable"></tbody>
+          </table>
+        </div>
+
+        <div class="pagination">
+          <button class="btn btn-ghost btn-sm" onclick="prevPage()">← Prev</button>
+          <span class="page-info" id="pageInfo">Page 1</span>
+          <button class="btn btn-ghost btn-sm" onclick="nextPage()">Next →</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="api.js"></script>
+<script>
+  if (!getToken()) window.location.href = 'login.html';
+  document.getElementById('sidebar').innerHTML = renderSidebar();
+  initTabs('.tabs');
+
+  let currentType = 'ADVANCED';
+  let currentPage = 0;
+  let totalPages  = 1;
+  let compStructure = [];
+  let searchTimer;
+
+  // ── Type toggle ───────────────────────────────────────────────────────────
+
+  function setType(type) {
+    currentType = type;
+    const isComp = type === 'COMPETITIVE';
+    document.getElementById('btnAdvanced').className   = isComp ? 'btn btn-ghost' : 'btn btn-primary';
+    document.getElementById('btnCompetitive').className = isComp ? 'btn btn-primary' : 'btn btn-ghost';
+
+    ['grp-section','grp-category','grp-examSource','grp-tag'].forEach(id =>
+      document.getElementById(id).style.display = isComp ? 'none' : '');
+    ['grp-comp-root','grp-comp-sub','grp-comp-leaf'].forEach(id =>
+      document.getElementById(id).style.display = isComp ? '' : 'none');
+
+    if (isComp && compStructure.length === 0) loadCompStructure();
+  }
+
+  // ── Competitive structure ─────────────────────────────────────────────────
+
+  async function loadCompStructure() {
+    const r = await apiFetch('/competitive/structure');
+    if (!r || !r.ok) return;
+    compStructure = r.data;
+    const rootSel = document.getElementById('compRoot');
+    rootSel.innerHTML = '<option value="">— select exam —</option>';
+    compStructure.forEach((root, i) => {
+      rootSel.innerHTML += `<option value="${i}">${root.name}</option>`;
+    });
+  }
+
+  function onCompRootChange() {
+    const idx = document.getElementById('compRoot').value;
+    const subSel = document.getElementById('compSub');
+    subSel.innerHTML = '<option value="">— select —</option>';
+    document.getElementById('compLeaf').innerHTML = '<option value="">— select sub-cat first —</option>';
+    if (idx === '') return;
+    const subs = compStructure[idx].children || [];
+    subs.forEach((sub, i) => {
+      subSel.innerHTML += `<option value="${i}">${sub.name}</option>`;
+    });
+  }
+
+  function onCompSubChange() {
+    const rootIdx = document.getElementById('compRoot').value;
+    const subIdx  = document.getElementById('compSub').value;
+    const leafSel = document.getElementById('compLeaf');
+    leafSel.innerHTML = '<option value="">— select —</option>';
+    if (rootIdx === '' || subIdx === '') return;
+    const leaves = compStructure[rootIdx].children[subIdx].children || [];
+    leaves.forEach((leaf, i) => {
+      leafSel.innerHTML += `<option value="${i}">${leaf.name}</option>`;
+    });
+  }
+
+  function onCompLeafChange() {
+    const rootIdx = document.getElementById('compRoot').value;
+    const subIdx  = document.getElementById('compSub').value;
+    const leafIdx = document.getElementById('compLeaf').value;
+    if (rootIdx === '' || subIdx === '' || leafIdx === '') return;
+    const leaf = compStructure[rootIdx].children[subIdx].children[leafIdx];
+    document.getElementById('compSection').value    = leaf.qSection    || '';
+    document.getElementById('compCategory').value  = leaf.qCategory   || '';
+    document.getElementById('compTag').value        = leaf.qTag        || '';
+    document.getElementById('compExamSource').value = leaf.qExamSource || '';
+  }
+
+  // ── Section → Category ────────────────────────────────────────────────────
+
+  function onSectionChange() {
+    const sel = document.getElementById('section');
+    const catSel = document.getElementById('category');
+    populateCategoryDropdown(sel.value, catSel);
+  }
+
+  // ── Form submit ───────────────────────────────────────────────────────────
+
+  document.getElementById('addForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const alert = document.getElementById('alert-add');
+    const btn   = e.target.querySelector('[type=submit]');
+    btn.disabled = true; btn.textContent = 'Saving…';
+
+    const isComp = currentType === 'COMPETITIVE';
+    const correctIndex = parseInt(document.querySelector('input[name=correct]:checked')?.value ?? '0');
+
+    const payload = {
+      section:          isComp ? document.getElementById('compSection').value    : document.getElementById('section').value,
+      category:         isComp ? document.getElementById('compCategory').value   : document.getElementById('category').value,
+      tag:              isComp ? document.getElementById('compTag').value         : document.getElementById('tag').value || null,
+      examSource:       isComp ? document.getElementById('compExamSource').value  : document.getElementById('examSource').value || null,
+      difficulty:       document.getElementById('difficulty').value,
+      questionNo:       document.getElementById('questionNo').value || null,
+      questionText:     document.getElementById('questionText').value,
+      optionA:          document.getElementById('optionA').value,
+      optionB:          document.getElementById('optionB').value,
+      optionC:          document.getElementById('optionC').value,
+      optionD:          document.getElementById('optionD').value,
+      correctIndex,
+      solution:         document.getElementById('solution').value,
+      questionImageUrl: document.getElementById('questionImageUrl').value || null,
+      solutionImageUrl: document.getElementById('solutionImageUrl').value || null
+    };
+
+    if (!payload.section || !payload.category || !payload.difficulty) {
+      showAlert(alert, 'error', 'Please fill all required fields.');
+      btn.disabled = false; btn.textContent = 'Save Question';
+      return;
+    }
+
+    const r = await apiFetch('/questions', { method: 'POST', body: JSON.stringify(payload) });
+    if (r && r.ok) {
+      showAlert(alert, 'success', `Question saved (ID: ${r.data.id})`);
+      resetForm();
+    } else {
+      showAlert(alert, 'error', 'Failed to save: ' + (r?.data?.error || r?.status));
+    }
+    btn.disabled = false; btn.textContent = 'Save Question';
+  });
+
+  function resetForm() {
+    document.getElementById('addForm').reset();
+    document.getElementById('category').innerHTML = '<option value="">— select section first —</option>';
+    document.getElementById('compSection').value = '';
+    document.getElementById('compCategory').value = '';
+    document.getElementById('compTag').value = '';
+    document.getElementById('compExamSource').value = '';
+  }
+
+  // ── Question list ─────────────────────────────────────────────────────────
+
+  async function loadQuestions() {
+    const section    = document.getElementById('f-section').value;
+    const difficulty = document.getElementById('f-difficulty').value;
+    const search     = document.getElementById('f-search').value;
+
+    const params = new URLSearchParams({ page: currentPage, size: 20 });
+    if (section)    params.set('section', section);
+    if (difficulty) params.set('difficulty', difficulty);
+    if (search)     params.set('search', search);
+
+    const r = await apiFetch('/questions?' + params);
+    if (!r || !r.ok) return;
+
+    totalPages = r.data.totalPages;
+    document.getElementById('pageInfo').textContent =
+      `Page ${currentPage + 1} of ${totalPages} (${r.data.totalElements} total)`;
+
+    const tbody = document.getElementById('questionTable');
+    tbody.innerHTML = r.data.questions.map(q => `
+      <tr>
+        <td>${q.id}</td>
+        <td>${q.section}</td>
+        <td>${q.category}</td>
+        <td><span class="badge badge-${q.difficulty?.toLowerCase()}">${q.difficulty}</span></td>
+        <td title="${escHtml(q.questionText)}">${escHtml(q.questionText?.substring(0,60))}…</td>
+        <td>${q.tag || ''}</td>
+        <td>
+          <button class="btn btn-danger btn-sm" onclick="deleteQuestion(${q.id}, this)">🗑</button>
+        </td>
+      </tr>`).join('');
+  }
+
+  async function deleteQuestion(id, btn) {
+    if (!confirm('Delete question #' + id + '?')) return;
+    btn.disabled = true;
+    const r = await apiFetch('/questions/' + id, { method: 'DELETE' });
+    if (r && r.ok) loadQuestions();
+    else { btn.disabled = false; alert('Delete failed'); }
+  }
+
+  function prevPage() { if (currentPage > 0) { currentPage--; loadQuestions(); } }
+  function nextPage() { if (currentPage < totalPages - 1) { currentPage++; loadQuestions(); } }
+
+  function debounceSearch() {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => { currentPage = 0; loadQuestions(); }, 400);
+  }
+
+  function escHtml(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // Init
+  loadQuestions();
+</script>
+</body>
+</html>

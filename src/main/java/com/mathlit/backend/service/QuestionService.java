@@ -202,7 +202,8 @@ public class QuestionService {
         dto.setOptionD(q.getOptionD());
         dto.setCorrectIndex(q.getCorrectIndex());
         dto.setSolution(q.getSolution());
-        dto.setImageUrl(q.getImageUrl());
+        dto.setQuestionImageUrl(q.getQuestionImageUrl());
+        dto.setSolutionImageUrl(q.getSolutionImageUrl());
         dto.setFavorited(favoriteIds.contains(q.getId()));
         return dto;
     }

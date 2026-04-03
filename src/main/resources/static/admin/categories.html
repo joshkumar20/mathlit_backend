@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MathLit Admin — Competitive Categories</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="layout">
+  <div id="sidebar"></div>
+
+  <main class="main">
+    <div class="page-header">
+      <h1>Competitive Categories</h1>
+      <p>Manage the SSC → PYQ → Shift 1 navigation tree</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+
+      <!-- Tree view -->
+      <div>
+        <div class="card">
+          <div class="card-title">Current Structure</div>
+          <div id="alert-tree" class="alert"></div>
+          <div id="treeView"><p style="color:var(--muted)">Loading…</p></div>
+          <button class="btn btn-ghost btn-sm" onclick="loadTree()" style="margin-top:12px">🔄 Refresh</button>
+        </div>
+      </div>
+
+      <!-- Add category form -->
+      <div>
+        <div class="card">
+          <div class="card-title">Add Category Node</div>
+          <div id="alert-add" class="alert"></div>
+
+          <form id="addCatForm">
+            <div class="form-grid cols-1">
+              <div class="form-group">
+                <label>Parent Node</label>
+                <select id="parentId">
+                  <option value="">None (Root node — e.g. SSC, BANK)</option>
+                </select>
+                <small style="color:var(--muted);font-size:11px;margin-top:4px">
+                  Leave empty for a top-level exam (SSC, BANK, RRB).
+                  Select a root to add PYQ/Mocks. Select a mid to add a paper/set.
+                </small>
+              </div>
+
+              <div class="form-group">
+                <label>Display Name *</label>
+                <input id="catName" type="text" placeholder="e.g. SSC CHSL Shift 1" required />
+              </div>
+
+              <div class="form-group">
+                <label>Slug *</label>
+                <input id="catSlug" type="text" placeholder="e.g. SSC_CHSL_SHIFT_1" required />
+                <small style="color:var(--muted);font-size:11px;margin-top:4px">URL-safe, uppercase, underscores</small>
+              </div>
+
+              <div class="form-group">
+                <label>Icon (emoji)</label>
+                <input id="catIcon" type="text" placeholder="📝" maxlength="4" style="width:80px" />
+              </div>
+
+              <div class="form-group">
+                <label>Display Order</label>
+                <input id="catOrder" type="number" value="1" min="0" style="width:100px" />
+              </div>
+            </div>
+
+            <!-- Leaf-only fields -->
+            <div id="leafFields" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:16px">
+              <p style="color:var(--purple-lt);font-size:12px;margin-bottom:12px">
+                📌 Leaf node — fill in question fetch parameters
+              </p>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Q Section *</label>
+                  <input id="qSection" type="text" placeholder="COMPETITIVE" />
+                </div>
+                <div class="form-group">
+                  <label>Q Category *</label>
+                  <input id="qCategory" type="text" placeholder="SSC" />
+                </div>
+                <div class="form-group">
+                  <label>Q Tag</label>
+                  <input id="qTag" type="text" placeholder="PYQ" />
+                </div>
+                <div class="form-group">
+                  <label>Q Exam Source</label>
+                  <input id="qExamSource" type="text" placeholder="SSC_CHSL_SHIFT_1" />
+                </div>
+                <div class="form-group">
+                  <label>Question Count</label>
+                  <input id="qCount" type="number" placeholder="45" />
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="margin-top:20px">Add Node</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="api.js"></script>
+<script>
+  if (!getToken()) window.location.href = 'login.html';
+  document.getElementById('sidebar').innerHTML = renderSidebar();
+
+  let flatNodes = []; // all nodes from tree for parent dropdown
+
+  // ── Load tree ─────────────────────────────────────────────────────────────
+
+  async function loadTree() {
+    const r = await apiFetch('/competitive/structure');
+    if (!r || !r.ok) {
+      document.getElementById('treeView').innerHTML = '<p style="color:var(--red)">Failed to load</p>';
+      return;
+    }
+
+    flatNodes = [];
+    const roots = r.data;
+    const treeDiv = document.getElementById('treeView');
+
+    if (!roots.length) {
+      treeDiv.innerHTML = '<p style="color:var(--muted)">No categories yet. Add a root node to start.</p>';
+      refreshParentDropdown();
+      return;
+    }
+
+    let html = '';
+    roots.forEach(root => {
+      flatNodes.push(root);
+      html += renderNode(root, 'tree-root');
+      (root.children || []).forEach(mid => {
+        flatNodes.push(mid);
+        html += renderNode(mid, 'tree-mid');
+        (mid.children || []).forEach(leaf => {
+          flatNodes.push(leaf);
+          html += renderNode(leaf, 'tree-leaf');
+        });
+      });
+    });
+    treeDiv.innerHTML = html;
+    refreshParentDropdown();
+  }
+
+  function renderNode(node, cls) {
+    const isLeaf = node.qSection;
+    return `
+    <div class="tree-node ${cls}">
+      <div class="tree-node-header">
+        <span style="font-size:18px">${node.icon || '📁'}</span>
+        <span class="tree-node-name">${node.name}</span>
+        <span class="tree-node-slug">${node.slug}</span>
+        ${isLeaf ? `<span style="color:var(--muted);font-size:11px">${node.questionCount || 0} Qs</span>` : ''}
+        <div class="tree-node-actions">
+          <button class="btn btn-danger btn-sm" onclick="deleteNode(${node.id}, '${node.name}')">🗑</button>
+        </div>
+      </div>
+      ${isLeaf ? `<div style="font-size:11px;color:var(--muted);margin-top:6px">
+        ${node.qSection} → ${node.qCategory} → ${node.qTag || ''} → ${node.qExamSource || ''}
+      </div>` : ''}
+    </div>`;
+  }
+
+  function refreshParentDropdown() {
+    const sel = document.getElementById('parentId');
+    sel.innerHTML = '<option value="">None (Root node)</option>';
+    flatNodes.forEach(n => {
+      sel.innerHTML += `<option value="${n.id}">${n.name} (${n.slug})</option>`;
+    });
+  }
+
+  // Show leaf fields only when a parent is selected that already has children at depth 1
+  document.getElementById('parentId').addEventListener('change', function() {
+    const hasParent = this.value !== '';
+    // Show leaf fields when a 2nd-level parent is selected
+    // We detect depth: if the selected node has a parentId itself, it's mid → this new node = leaf
+    const selectedNode = flatNodes.find(n => String(n.id) === this.value);
+    const isMidNode = selectedNode && !selectedNode.qSection &&
+                      flatNodes.some(n => n.id === selectedNode.id && !flatNodes.find(p => p.id === selectedNode.parentId && !flatNodes.find(pp => pp.id === p.parentId)));
+    // Simpler: just show leaf fields if parent already has children that have qSection (leaf pattern)
+    // Actually show leaf fields whenever a parent is chosen that is NOT a root
+    const isRoot = selectedNode && !selectedNode.parentId && flatNodes.some(r => !r.parentId && r.id === selectedNode.id);
+    document.getElementById('leafFields').style.display =
+      (hasParent && !isRoot) ? '' : 'none';
+  });
+
+  // ── Submit ────────────────────────────────────────────────────────────────
+
+  document.getElementById('addCatForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const alert = document.getElementById('alert-add');
+    const btn = e.target.querySelector('button[type=submit]');
+    btn.disabled = true; btn.textContent = 'Saving…';
+
+    const parentId = document.getElementById('parentId').value;
+    const payload = {
+      name:         document.getElementById('catName').value,
+      slug:         document.getElementById('catSlug').value.toUpperCase().replace(/\s+/g,'_'),
+      icon:         document.getElementById('catIcon').value || null,
+      displayOrder: parseInt(document.getElementById('catOrder').value) || 0,
+      parentId:     parentId ? parseInt(parentId) : null,
+      isActive:     true,
+      qSection:     document.getElementById('qSection').value || null,
+      qCategory:    document.getElementById('qCategory').value || null,
+      qTag:         document.getElementById('qTag').value || null,
+      qExamSource:  document.getElementById('qExamSource').value || null,
+      questionCount:parseInt(document.getElementById('qCount').value) || null
+    };
+
+    const r = await apiFetch('/competitive/categories', {
+      method: 'POST', body: JSON.stringify(payload)
+    });
+
+    if (r && r.ok) {
+      showAlert(alert, 'success', `"${r.data.name}" added (ID: ${r.data.id})`);
+      e.target.reset();
+      document.getElementById('leafFields').style.display = 'none';
+      loadTree();
+    } else {
+      showAlert(alert, 'error', 'Failed: ' + (r?.data?.error || r?.status));
+    }
+    btn.disabled = false; btn.textContent = 'Add Node';
+  });
+
+  // ── Delete ────────────────────────────────────────────────────────────────
+
+  async function deleteNode(id, name) {
+    if (!confirm(`Delete "${name}" and all its children?`)) return;
+    const r = await apiFetch('/competitive/categories/' + id, { method: 'DELETE' });
+    if (r && r.ok) {
+      showAlert(document.getElementById('alert-tree'), 'success', `"${name}" deleted`);
+      loadTree();
+    } else {
+      showAlert(document.getElementById('alert-tree'), 'error', 'Delete failed');
+    }
+  }
+
+  // Init
+  loadTree();
+</script>
+</body>
+</html>

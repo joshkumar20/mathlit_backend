@@ -56,6 +56,8 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return request.getServletPath().equals("/health");
+        String path = request.getServletPath();
+        // Skip for health check and all admin routes (handled by AdminTokenFilter)
+        return path.equals("/health") || path.startsWith("/admin/");
     }
 }

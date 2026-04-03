@@ -19,6 +19,7 @@ public class QuestionDto {
     private String optionD;
     private Integer correctIndex; // 0=A, 1=B, 2=C, 3=D
     private String solution;
-    private String imageUrl;      // null if no image
-    private boolean isFavorited;  // whether this user has favorited this question
+    private String questionImageUrl; // image shown alongside the question
+    private String solutionImageUrl; // image shown in the solution/explanation
+    private boolean isFavorited;     // whether this user has favorited this question
 }

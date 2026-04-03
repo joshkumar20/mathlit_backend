@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MathLit Admin — Bulk Upload</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="layout">
+  <div id="sidebar"></div>
+
+  <main class="main">
+    <div class="page-header">
+      <h1>Bulk Upload</h1>
+      <p>Upload many questions at once via CSV file</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+
+      <!-- Format reference -->
+      <div class="card">
+        <div class="card-title">CSV Format</div>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:12px">
+          First row is the header (ignored). One question per row. Fields with commas must be wrapped in double quotes.
+        </p>
+        <div class="code-block">section,category,difficulty,questionNo,questionText,optionA,optionB,optionC,optionD,correctIndex,solution,questionImageUrl,solutionImageUrl,tag,examSource
+
+ARITHMETIC,SIMPLIFICATION,EASY,1,"Simplify: 5+3×2",14,20,11,7,0,"BODMAS: 3×2=6 first, then 5+6=11",,,,
+COMPETITIVE,SSC,MEDIUM,2,"Find the value of x",4,6,8,10,2,"Explanation here",,,"PYQ","SSC_CHSL_SHIFT_1"</div>
+
+        <p style="color:var(--muted);font-size:12px;margin-top:8px"><strong style="color:var(--text)">correctIndex:</strong> 0=A, 1=B, 2=C, 3=D</p>
+
+        <div style="margin-top:16px">
+          <p style="font-size:13px;font-weight:600;margin-bottom:8px">Section values:</p>
+          <p style="font-size:12px;color:var(--muted)">ARITHMETIC, ALGEBRA, GEOMETRY, TRIGONOMETRY, STATISTICS, COMPETITIVE</p>
+        </div>
+
+        <div style="margin-top:12px">
+          <p style="font-size:13px;font-weight:600;margin-bottom:8px">Required columns:</p>
+          <p style="font-size:12px;color:var(--muted)">1–11 are required. 12–15 are optional (leave blank or omit).</p>
+        </div>
+
+        <button class="btn btn-ghost btn-sm" onclick="downloadSample()" style="margin-top:16px">⬇ Download sample CSV</button>
+      </div>
+
+      <!-- Upload form -->
+      <div>
+        <div class="card">
+          <div class="card-title">Upload File</div>
+          <div id="alert-upload" class="alert"></div>
+
+          <div class="upload-area" id="dropZone" onclick="document.getElementById('csvFile').click()">
+            <div style="font-size:40px">📤</div>
+            <p style="font-size:15px;color:var(--text);margin-top:8px">Click or drag a CSV file here</p>
+            <p>Supports .csv files only</p>
+          </div>
+          <input type="file" id="csvFile" accept=".csv" style="display:none" onchange="onFileSelected(this)" />
+
+          <div id="fileInfo" style="display:none;margin-top:12px;padding:10px;background:var(--bg);border-radius:6px;border:1px solid var(--border)">
+            <span id="fileName" style="font-size:13px"></span>
+            <button class="btn btn-ghost btn-sm" style="margin-left:10px" onclick="clearFile()">✕ Remove</button>
+          </div>
+
+          <button class="btn btn-primary" id="uploadBtn" onclick="uploadFile()" style="margin-top:16px;width:100%" disabled>
+            Upload Questions
+          </button>
+        </div>
+
+        <!-- Result summary -->
+        <div class="card" id="resultCard" style="display:none">
+          <div class="card-title">Upload Result</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
+            <div class="stat-card">
+              <div class="value" id="res-uploaded" style="color:var(--green)">0</div>
+              <div class="label">Uploaded</div>
+            </div>
+            <div class="stat-card">
+              <div class="value" id="res-total">0</div>
+              <div class="label">Total Rows</div>
+            </div>
+            <div class="stat-card">
+              <div class="value" id="res-errors" style="color:var(--red)">0</div>
+              <div class="label">Errors</div>
+            </div>
+          </div>
+          <div id="errorList" style="display:none">
+            <p style="font-size:13px;font-weight:600;color:var(--red);margin-bottom:8px">Rows with errors:</p>
+            <div id="errorItems" style="font-size:12px;color:var(--muted);line-height:1.8"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="api.js"></script>
+<script>
+  if (!getToken()) window.location.href = 'login.html';
+  document.getElementById('sidebar').innerHTML = renderSidebar();
+
+  let selectedFile = null;
+
+  // ── Drag and drop ─────────────────────────────────────────────────────────
+  const dropZone = document.getElementById('dropZone');
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file && file.name.endsWith('.csv')) setFile(file);
+    else showAlert(document.getElementById('alert-upload'), 'error', 'Please drop a .csv file');
+  });
+
+  function onFileSelected(input) {
+    if (input.files[0]) setFile(input.files[0]);
+  }
+
+  function setFile(file) {
+    selectedFile = file;
+    document.getElementById('fileName').textContent = `${file.name} (${(file.size/1024).toFixed(1)} KB)`;
+    document.getElementById('fileInfo').style.display = '';
+    document.getElementById('uploadBtn').disabled = false;
+  }
+
+  function clearFile() {
+    selectedFile = null;
+    document.getElementById('csvFile').value = '';
+    document.getElementById('fileInfo').style.display = 'none';
+    document.getElementById('uploadBtn').disabled = true;
+    document.getElementById('resultCard').style.display = 'none';
+  }
+
+  // ── Upload ────────────────────────────────────────────────────────────────
+
+  async function uploadFile() {
+    if (!selectedFile) return;
+    const alert = document.getElementById('alert-upload');
+    const btn   = document.getElementById('uploadBtn');
+    btn.disabled = true; btn.textContent = 'Uploading…';
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    try {
+      const res = await fetch('/admin/api/questions/bulk', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + getToken() },
+        body: formData
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        document.getElementById('res-uploaded').textContent = data.uploaded;
+        document.getElementById('res-total').textContent    = data.total;
+        document.getElementById('res-errors').textContent   = data.errors?.length || 0;
+        document.getElementById('resultCard').style.display = '';
+
+        if (data.errors && data.errors.length) {
+          document.getElementById('errorList').style.display = '';
+          document.getElementById('errorItems').innerHTML =
+            data.errors.map(e => `<div>• ${e}</div>`).join('');
+        } else {
+          document.getElementById('errorList').style.display = 'none';
+        }
+
+        showAlert(alert, 'success', `Uploaded ${data.uploaded} questions successfully!`);
+      } else {
+        showAlert(alert, 'error', data.error || 'Upload failed');
+      }
+    } catch (err) {
+      showAlert(alert, 'error', 'Network error: ' + err.message);
+    }
+
+    btn.disabled = false; btn.textContent = 'Upload Questions';
+  }
+
+  // ── Sample CSV download ───────────────────────────────────────────────────
+
+  function downloadSample() {
+    const csv = [
+      'section,category,difficulty,questionNo,questionText,optionA,optionB,optionC,optionD,correctIndex,solution,questionImageUrl,solutionImageUrl,tag,examSource',
+      'ARITHMETIC,SIMPLIFICATION,EASY,1,"Simplify: 5+3×2",14,20,11,7,2,"BODMAS: multiply first 3×2=6 then 5+6=11",,,,',
+      'ALGEBRA,LINEAR_EQ,MEDIUM,2,"If 2x+4=10 then x=?",1,2,3,4,2,"2x=6 so x=3",,,,',
+      'COMPETITIVE,SSC,HARD,1,"Find the average of first 10 natural numbers",5,5.5,6,6.5,1,"Sum=55 Count=10 Avg=5.5",,,"PYQ","SSC_CHGL_SHIFT_1"'
+    ].join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'mathlit_questions_sample.csv';
+    a.click(); URL.revokeObjectURL(url);
+  }
+</script>
+</body>
+</html>
