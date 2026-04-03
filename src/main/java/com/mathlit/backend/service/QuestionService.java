@@ -34,6 +34,11 @@ public class QuestionService {
         int count         = request.getCount();
         String gameMode   = request.getGameMode() == null ? "PRACTICE" : request.getGameMode().toUpperCase();
 
+        // Competitive extra filters
+        String tag        = request.getTag() != null ? request.getTag().toUpperCase() : null;
+        String examSource = request.getExamSource() != null ? request.getExamSource().toUpperCase() : null;
+        boolean isCompetitive = tag != null && examSource != null;
+
         // ── FAVORITES mode: only return questions the user has favorited ──────
         if ("FAVORITES".equals(gameMode)) {
             List<Long> favoriteIds = progressRepository.findFavoriteQuestionIds(firebaseUid);
@@ -66,22 +71,30 @@ public class QuestionService {
             return new QuestionFetchResponse(section, category, totalFavorites, dtos.size(), dtos);
         }
 
-        // ── Normal modes: exclude already-attempted, reset when all done ──────
-
-        long totalAvailable = "ALL".equals(difficulty)
-                ? questionRepository.countBySectionAndCategory(section, category)
-                : questionRepository.countBySectionAndCategoryAndDifficulty(section, category, difficulty);
+        // ── Normal and Competitive modes: exclude already-attempted, reset when all done ──
 
         List<Long> favoriteIds = progressRepository.findFavoriteQuestionIds(firebaseUid);
         Set<Long> favIdSet     = new HashSet<>(favoriteIds);
 
-        // NOT EXISTS subquery — no Java-side ID list needed
-        List<Question> fresh = fetchUnattempted(section, category, difficulty, firebaseUid, count * 2);
+        List<Question> fresh;
+        long totalAvailable;
 
-        // If unattempted questions are fewer than requested count,
-        // fall back to full pool so small question banks always fill the session
-        if (fresh.size() < count) {
-            fresh = fetchFromDb(section, category, difficulty, count);
+        if (isCompetitive) {
+            totalAvailable = questionRepository.countBySectionAndCategoryAndTagAndExamSource(
+                    section, category, tag, examSource);
+            fresh = fetchUnattemptedCompetitive(section, category, tag, examSource, difficulty, firebaseUid, count * 2);
+            if (fresh.size() < count) {
+                fresh = fetchFromDbCompetitive(section, category, tag, examSource, difficulty, count);
+            }
+        } else {
+            totalAvailable = "ALL".equals(difficulty)
+                    ? questionRepository.countBySectionAndCategory(section, category)
+                    : questionRepository.countBySectionAndCategoryAndDifficulty(section, category, difficulty);
+            // NOT EXISTS subquery — no Java-side ID list needed
+            fresh = fetchUnattempted(section, category, difficulty, firebaseUid, count * 2);
+            if (fresh.size() < count) {
+                fresh = fetchFromDb(section, category, difficulty, count);
+            }
         }
 
         Collections.shuffle(fresh);
@@ -110,6 +123,25 @@ public class QuestionService {
         return "ALL".equals(difficulty)
                 ? questionRepository.findBySectionAndCategory(section, category)
                 : questionRepository.findBySectionAndCategoryAndDifficulty(section, category, difficulty);
+    }
+
+    // Competitive — unattempted fetch
+    private List<Question> fetchUnattemptedCompetitive(String section, String category,
+                                                        String tag, String examSource,
+                                                        String difficulty, String uid, int limit) {
+        PageRequest page = PageRequest.of(0, limit);
+        return "ALL".equals(difficulty)
+                ? questionRepository.findUnattemptedCompetitive(section, category, tag, examSource, uid, page)
+                : questionRepository.findUnattemptedCompetitiveByDifficulty(section, category, tag, examSource, difficulty, uid, page);
+    }
+
+    // Competitive — full pool fetch (reset)
+    private List<Question> fetchFromDbCompetitive(String section, String category,
+                                                   String tag, String examSource,
+                                                   String difficulty, int limit) {
+        return "ALL".equals(difficulty)
+                ? questionRepository.findBySectionAndCategoryAndTagAndExamSource(section, category, tag, examSource)
+                : questionRepository.findBySectionAndCategoryAndTagAndExamSourceAndDifficulty(section, category, tag, examSource, difficulty);
     }
 
     // ── Mark Progress (called after game ends) ────────────────────────────────

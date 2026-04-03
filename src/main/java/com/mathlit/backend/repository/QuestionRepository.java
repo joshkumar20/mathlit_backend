@@ -50,4 +50,34 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
     // ── Fetch by IDs (for favorites) ──────────────────────────────────────────
 
     List<Question> findByIdIn(List<Long> ids);
+
+    // ── Competitive: section + category + tag + examSource ────────────────────
+
+    @Query("SELECT q FROM Question q WHERE LOWER(q.section) = LOWER(:section) AND LOWER(q.category) = LOWER(:category) AND LOWER(q.tag) = LOWER(:tag) AND LOWER(q.examSource) = LOWER(:examSource)")
+    List<Question> findBySectionAndCategoryAndTagAndExamSource(
+            @Param("section") String section, @Param("category") String category,
+            @Param("tag") String tag, @Param("examSource") String examSource);
+
+    @Query("SELECT q FROM Question q WHERE LOWER(q.section) = LOWER(:section) AND LOWER(q.category) = LOWER(:category) AND LOWER(q.tag) = LOWER(:tag) AND LOWER(q.examSource) = LOWER(:examSource) AND LOWER(q.difficulty) = LOWER(:difficulty)")
+    List<Question> findBySectionAndCategoryAndTagAndExamSourceAndDifficulty(
+            @Param("section") String section, @Param("category") String category,
+            @Param("tag") String tag, @Param("examSource") String examSource,
+            @Param("difficulty") String difficulty);
+
+    @Query("SELECT q FROM Question q WHERE LOWER(q.section) = LOWER(:section) AND LOWER(q.category) = LOWER(:category) AND LOWER(q.tag) = LOWER(:tag) AND LOWER(q.examSource) = LOWER(:examSource) AND NOT EXISTS (SELECT p FROM UserQuestionProgress p WHERE p.questionId = q.id AND p.firebaseUid = :uid AND p.isAttempted = true)")
+    List<Question> findUnattemptedCompetitive(
+            @Param("section") String section, @Param("category") String category,
+            @Param("tag") String tag, @Param("examSource") String examSource,
+            @Param("uid") String uid, Pageable pageable);
+
+    @Query("SELECT q FROM Question q WHERE LOWER(q.section) = LOWER(:section) AND LOWER(q.category) = LOWER(:category) AND LOWER(q.tag) = LOWER(:tag) AND LOWER(q.examSource) = LOWER(:examSource) AND LOWER(q.difficulty) = LOWER(:difficulty) AND NOT EXISTS (SELECT p FROM UserQuestionProgress p WHERE p.questionId = q.id AND p.firebaseUid = :uid AND p.isAttempted = true)")
+    List<Question> findUnattemptedCompetitiveByDifficulty(
+            @Param("section") String section, @Param("category") String category,
+            @Param("tag") String tag, @Param("examSource") String examSource,
+            @Param("difficulty") String difficulty, @Param("uid") String uid, Pageable pageable);
+
+    @Query("SELECT COUNT(q) FROM Question q WHERE LOWER(q.section) = LOWER(:section) AND LOWER(q.category) = LOWER(:category) AND LOWER(q.tag) = LOWER(:tag) AND LOWER(q.examSource) = LOWER(:examSource)")
+    long countBySectionAndCategoryAndTagAndExamSource(
+            @Param("section") String section, @Param("category") String category,
+            @Param("tag") String tag, @Param("examSource") String examSource);
 }
