@@ -9,11 +9,13 @@ public class XpCalculator {
 
     public static int calculateXp(int correctAnswers, String gameMode) {
         int base = correctAnswers * 10;
-        return switch (gameMode) {
-            case "speed_round" -> (int) (base * 1.5);
-            case "survival"    -> (int) (base * 2.0);
-            case "timed"       -> (int) (base * 1.3);
-            default            -> base;
+        if (gameMode == null) return base;
+        return switch (gameMode.toUpperCase()) {
+            case "SPEED_ROUND"     -> (int) (base * 1.5);
+            case "SURVIVAL"        -> (int) (base * 2.0);
+            case "TIMED"           -> (int) (base * 1.3);
+            case "DAILY_CHALLENGE" -> (int) (base * 1.2);
+            default                -> base;
         };
     }
 
