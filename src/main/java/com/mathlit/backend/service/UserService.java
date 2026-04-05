@@ -74,6 +74,9 @@ public class UserService {
         if (user.getTotalAttempted() > 0) {
             dto.setAccuracy((double) user.getTotalCorrect() / user.getTotalAttempted() * 100);
         }
+        if (user.getLastPlayedDate() != null) {
+            dto.setLastPlayedDate(user.getLastPlayedDate().toString());
+        }
         return dto;
     }
 }

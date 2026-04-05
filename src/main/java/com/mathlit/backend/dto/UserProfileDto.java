@@ -1,6 +1,7 @@
 package com.mathlit.backend.dto;
 
 import lombok.Data;
+import java.time.LocalDate;
 
 @Data
 public class UserProfileDto {
@@ -19,4 +20,5 @@ public class UserProfileDto {
     private double accuracy;
     private int highestScore;
     private boolean isNewUser;
+    private String lastPlayedDate;
 }

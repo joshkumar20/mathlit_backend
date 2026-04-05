@@ -19,11 +19,14 @@ public class GameSessionService {
 
     private final GameSessionRepository gameSessionRepository;
     private final UserRepository userRepository;
+    private final StreakService streakService;
 
     public GameSessionService(GameSessionRepository gameSessionRepository,
-                               UserRepository userRepository) {
+                               UserRepository userRepository,
+                               StreakService streakService) {
         this.gameSessionRepository = gameSessionRepository;
         this.userRepository = userRepository;
+        this.streakService = streakService;
     }
 
     @Transactional
@@ -57,6 +60,8 @@ public class GameSessionService {
         if (dto.getScore() > user.getHighestScore()) {
             user.setHighestScore(dto.getScore());
         }
+
+        streakService.updateStreak(user);
 
         userRepository.save(user);
 
