@@ -73,6 +73,7 @@ public class CompetitiveCategoryService {
     private CompetitiveCategoryDto toDto(CompetitiveCategory c, int depth) {
         CompetitiveCategoryDto dto = new CompetitiveCategoryDto();
         dto.setId(c.getId());
+        dto.setParentId(c.getParentId());
         dto.setName(c.getName());
         dto.setSlug(c.getSlug());
         dto.setIcon(c.getIcon());
@@ -83,8 +84,8 @@ public class CompetitiveCategoryService {
         dto.setQExamSource(c.getQExamSource());
         dto.setQuestionCount(c.getQuestionCount());
 
-        // Recurse max 2 levels deep (root → mid → leaf)
-        if (depth < 2) {
+        // Recurse max 3 levels deep (root → sub-exam → type → leaf)
+        if (depth < 3) {
             List<CompetitiveCategory> children =
                     repo.findByParentIdAndIsActiveTrueOrderByDisplayOrderAsc(c.getId());
             dto.setChildren(children.stream()

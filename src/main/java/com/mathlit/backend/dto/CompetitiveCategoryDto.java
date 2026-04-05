@@ -17,6 +17,7 @@ import java.util.List;
 public class CompetitiveCategoryDto {
 
     private Long id;
+    private Long parentId;
     private String name;
     private String slug;
     private String icon;

@@ -111,7 +111,7 @@
   if (!getToken()) window.location.href = 'login.html';
   document.getElementById('sidebar').innerHTML = renderSidebar();
 
-  let flatNodes = []; // all nodes from tree for parent dropdown
+  let flatNodes = []; // { node, depth } entries for all nodes
 
   // ── Load tree ─────────────────────────────────────────────────────────────
 
@@ -133,62 +133,52 @@
     }
 
     let html = '';
-    roots.forEach(root => {
-      flatNodes.push(root);
-      html += renderNode(root, 'tree-root');
-      (root.children || []).forEach(mid => {
-        flatNodes.push(mid);
-        html += renderNode(mid, 'tree-mid');
-        (mid.children || []).forEach(leaf => {
-          flatNodes.push(leaf);
-          html += renderNode(leaf, 'tree-leaf');
-        });
-      });
-    });
+    roots.forEach(root => html += renderNodeRecursive(root, 0));
     treeDiv.innerHTML = html;
     refreshParentDropdown();
   }
 
-  function renderNode(node, cls) {
-    const isLeaf = node.qSection;
-    return `
+  const DEPTH_CLASSES = ['tree-root', 'tree-mid', 'tree-leaf', 'tree-leaf'];
+
+  function renderNodeRecursive(node, depth) {
+    flatNodes.push({ node, depth });
+    const cls = DEPTH_CLASSES[Math.min(depth, DEPTH_CLASSES.length - 1)];
+    const isLeaf = !!node.qSection;
+    let html = `
     <div class="tree-node ${cls}">
       <div class="tree-node-header">
         <span style="font-size:18px">${node.icon || '📁'}</span>
         <span class="tree-node-name">${node.name}</span>
-        <span class="tree-node-slug">${node.slug}</span>
+        <span class="tree-node-slug">${node.slug || ''}</span>
         ${isLeaf ? `<span style="color:var(--muted);font-size:11px">${node.questionCount || 0} Qs</span>` : ''}
         <div class="tree-node-actions">
-          <button class="btn btn-danger btn-sm" onclick="deleteNode(${node.id}, '${node.name}')">🗑</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteNode(${node.id}, '${node.name.replace(/'/g,"\\'")}')">🗑</button>
         </div>
       </div>
       ${isLeaf ? `<div style="font-size:11px;color:var(--muted);margin-top:6px">
         ${node.qSection} → ${node.qCategory} → ${node.qTag || ''} → ${node.qExamSource || ''}
       </div>` : ''}
     </div>`;
+    (node.children || []).forEach(child => html += renderNodeRecursive(child, depth + 1));
+    return html;
   }
 
   function refreshParentDropdown() {
     const sel = document.getElementById('parentId');
+    const indent = ['', '— ', '— — ', '— — — '];
     sel.innerHTML = '<option value="">None (Root node)</option>';
-    flatNodes.forEach(n => {
-      sel.innerHTML += `<option value="${n.id}">${n.name} (${n.slug})</option>`;
+    flatNodes.forEach(({ node, depth }) => {
+      const pad = indent[Math.min(depth, indent.length - 1)];
+      sel.innerHTML += `<option value="${node.id}" data-depth="${depth}">${pad}${node.name} (${node.slug || node.id})</option>`;
     });
   }
 
-  // Show leaf fields only when a parent is selected that already has children at depth 1
+  // Show leaf fields only when selected parent is at depth ≥ 2
+  // (depth 0 = root like SSC, depth 1 = SSC MTS, depth 2 = PYQ → children will be leaves)
   document.getElementById('parentId').addEventListener('change', function() {
-    const hasParent = this.value !== '';
-    // Show leaf fields when a 2nd-level parent is selected
-    // We detect depth: if the selected node has a parentId itself, it's mid → this new node = leaf
-    const selectedNode = flatNodes.find(n => String(n.id) === this.value);
-    const isMidNode = selectedNode && !selectedNode.qSection &&
-                      flatNodes.some(n => n.id === selectedNode.id && !flatNodes.find(p => p.id === selectedNode.parentId && !flatNodes.find(pp => pp.id === p.parentId)));
-    // Simpler: just show leaf fields if parent already has children that have qSection (leaf pattern)
-    // Actually show leaf fields whenever a parent is chosen that is NOT a root
-    const isRoot = selectedNode && !selectedNode.parentId && flatNodes.some(r => !r.parentId && r.id === selectedNode.id);
-    document.getElementById('leafFields').style.display =
-      (hasParent && !isRoot) ? '' : 'none';
+    const opt = this.options[this.selectedIndex];
+    const depth = opt ? parseInt(opt.dataset.depth ?? '-1') : -1;
+    document.getElementById('leafFields').style.display = depth >= 2 ? '' : 'none';
   });
 
   // ── Submit ────────────────────────────────────────────────────────────────

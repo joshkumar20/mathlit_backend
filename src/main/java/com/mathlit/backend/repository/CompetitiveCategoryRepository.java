@@ -12,4 +12,7 @@ public interface CompetitiveCategoryRepository extends JpaRepository<Competitive
 
     /** Active children of a given parent, ordered by displayOrder */
     List<CompetitiveCategory> findByParentIdAndIsActiveTrueOrderByDisplayOrderAsc(Long parentId);
+
+    /** All children (active or inactive) of a given parent */
+    List<CompetitiveCategory> findByParentId(Long parentId);
 }

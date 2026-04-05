@@ -10,4 +10,6 @@ public class DailyChallengeResultDto {
     private long totalParticipants;
     private int score;
     private double percentile;
+    private int newStreak;
+    private int longestStreak;
 }

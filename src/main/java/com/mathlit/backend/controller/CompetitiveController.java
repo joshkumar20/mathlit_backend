@@ -95,6 +95,7 @@ public class CompetitiveController {
 
         CompetitiveCategoryDto dto = new CompetitiveCategoryDto();
         dto.setId(saved.getId());
+        dto.setParentId(saved.getParentId());
         dto.setName(saved.getName());
         dto.setSlug(saved.getSlug());
         dto.setIcon(saved.getIcon());
@@ -105,6 +106,46 @@ public class CompetitiveController {
         dto.setQExamSource(saved.getQExamSource());
         dto.setQuestionCount(saved.getQuestionCount());
         return ResponseEntity.ok(dto);
+    }
+
+    /**
+     * Returns the direct active children of a category node.
+     * Used by the Android app when navigating deeper into the competitive tree.
+     */
+    @GetMapping("/categories/{id}/children")
+    public ResponseEntity<List<CompetitiveCategoryDto>> getChildren(@PathVariable Long id) {
+        List<CompetitiveCategory> children =
+                repo.findByParentIdAndIsActiveTrueOrderByDisplayOrderAsc(id);
+
+        List<CompetitiveCategoryDto> dtos = children.stream().map(c -> {
+            CompetitiveCategoryDto dto = new CompetitiveCategoryDto();
+            dto.setId(c.getId());
+            dto.setParentId(c.getParentId());
+            dto.setName(c.getName());
+            dto.setSlug(c.getSlug());
+            dto.setIcon(c.getIcon());
+            dto.setDisplayOrder(c.getDisplayOrder());
+            dto.setQSection(c.getQSection());
+            dto.setQCategory(c.getQCategory());
+            dto.setQTag(c.getQTag());
+            dto.setQExamSource(c.getQExamSource());
+            dto.setQuestionCount(c.getQuestionCount());
+            return dto;
+        }).collect(java.util.stream.Collectors.toList());
+
+        return ResponseEntity.ok(dtos);
+    }
+
+    /** Admin: delete a node and all its descendants recursively. */
+    @DeleteMapping("/categories/{id}")
+    public ResponseEntity<Void> deleteCategory(@PathVariable Long id) {
+        deleteRecursive(id);
+        return ResponseEntity.ok().build();
+    }
+
+    private void deleteRecursive(Long id) {
+        repo.findByParentId(id).forEach(child -> deleteRecursive(child.getId()));
+        repo.deleteById(id);
     }
 
     /** Admin: toggle active status of a node (and implicitly its subtree) */

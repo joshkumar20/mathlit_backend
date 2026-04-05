@@ -16,6 +16,7 @@ import com.mathlit.backend.dto.ChallengeQuestionDto;
 import com.mathlit.backend.dto.DailyChallengeDto;
 import com.mathlit.backend.dto.DailyChallengeResultDto;
 import com.mathlit.backend.dto.DailyChallengeSubmitDto;
+import com.mathlit.backend.dto.StreakStatusDto;
 import com.mathlit.backend.model.DailyChallenge;
 import com.mathlit.backend.model.DailyChallengeQuestion;
 import com.mathlit.backend.model.DailyChallengeResult;
@@ -102,10 +103,15 @@ public class DailyChallengeService {
         result.setCorrectAnswers(dto.getCorrectAnswers());
         resultRepository.save(result);
 
-        userRepository.findByFirebaseUid(uid).ifPresent(user -> {
-            streakService.updateStreak(user);
+        int newStreak = 0, longestStreak = 0;
+        Optional<com.mathlit.backend.model.User> userOpt = userRepository.findByFirebaseUid(uid);
+        if (userOpt.isPresent()) {
+            com.mathlit.backend.model.User user = userOpt.get();
+            StreakStatusDto streakStatus = streakService.updateStreak(user);
             userRepository.save(user);
-        });
+            newStreak = streakStatus.getCurrentStreak();
+            longestStreak = streakStatus.getLongestStreak();
+        }
 
         long totalParticipants = resultRepository.countByChallengeDate(today);
         long betterThanMe = resultRepository.countByChallengeDateAndScoreGreaterThan(today, dto.getScore());
@@ -114,7 +120,7 @@ public class DailyChallengeService {
                 ? (double)(totalParticipants - betterThanMe) / totalParticipants * 100
                 : 100.0;
 
-        return new DailyChallengeResultDto(rank, totalParticipants, dto.getScore(), percentile);
+        return new DailyChallengeResultDto(rank, totalParticipants, dto.getScore(), percentile, newStreak, longestStreak);
     }
 
     public boolean hasCompletedToday(String uid) {
